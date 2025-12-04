@@ -1,185 +1,18 @@
-import Editor from '@monaco-editor/react';
 import type { FC } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
-
-const STORAGE_KEY = 'canvas_editor_v1_content';
-
-const initialCode = `
-export const config = {
-  canvasWidth: 600,
-  canvasHeight: 600,
-  position: 'center',
-  backgroundColor: '#ffffff'
-};
-
-// Fondo oscuro base
-ctx.fillStyle = '#111827';
-ctx.fillRect(0, 0, config.canvasWidth, config.canvasHeight);
-
-// Configuración de gradiente
-const gradient = ctx.createLinearGradient(0, 0, config.canvasWidth, config.canvasHeight);
-gradient.addColorStop(0, '#f43f5e'); // Rose
-gradient.addColorStop(1, '#6366f1'); // Indigo
-
-// Círculo central
-ctx.fillStyle = gradient;
-ctx.beginPath();
-ctx.arc(300, 300, 150, 0, Math.PI * 2);
-ctx.fill();
-
-// Efecto de brillo
-ctx.shadowColor = '#f43f5e';
-ctx.shadowBlur = 50;
-
-// Texto
-ctx.fillStyle = 'white';
-ctx.shadowBlur = 0; // Reset shadow para texto nítido
-ctx.font = 'bold 40px Inter, sans-serif';
-ctx.textAlign = 'center';
-ctx.fillText('Canvas Editor', 300, 280);
-
-ctx.font = 'normal 20px Inter, sans-serif';
-ctx.fillStyle = '#cbd5e1';
-ctx.fillText('Changes are saved automatically', 300, 320);
-`.trim();
-
-type CanvasConfig = {
-  canvasWidth?: number;
-  canvasHeight?: number;
-  position?: 'center' | 'top-left' | string;
-  backgroundColor?: string;
-};
-
-type Status = 'Ready' | 'Saved' | 'Error' | 'Saving';
-
-type EditorPaneProps = {
-  code: string;
-  status: Status;
-  onChangeCode: (code: string) => void;
-  onReset: () => void;
-  onFormat: () => void;
-  editorRef: React.MutableRefObject<any | null>;
-};
-
-const EditorPane: FC<EditorPaneProps> = ({
-  code,
-  status,
-  onChangeCode,
-  onReset,
-  onFormat,
-  editorRef,
-}) => {
-  return (
-    <div className="w-1/2 h-full flex flex-col border-r border-gray-800 bg-[#1e1e1e]">
-      <div className="h-12 flex items-center justify-between px-4 bg-[#1e1e1e] border-b border-gray-800 select-none">
-        <div className="flex items-center gap-2 text-sm font-medium text-gray-400">
-          <i className="ph ph-code text-[#818cf8] text-lg" />
-          <span>script.js</span>
-        </div>
-        <div className="flex gap-2 items-center">
-          <button
-            onClick={onReset}
-            className="p-1.5 hover:bg-gray-700 rounded text-gray-400 hover:text-red-400 transition"
-            title="Restaurar código original"
-            type="button"
-          >
-            <i className="ph ph-trash" />
-          </button>
-          <button
-            onClick={onFormat}
-            className="p-1.5 hover:bg-gray-700 rounded text-gray-400 hover:text-white transition"
-            title="Formatear código"
-            type="button"
-          >
-            <i className="ph ph-magic-wand" />
-          </button>
-          <div className="w-16 text-right">
-            {status === 'Saving' ? (
-              <div className="ml-auto inline-block border-2 border-gray-700 border-t-[#818cf8] rounded-full w-3.5 h-3.5 animate-spin" />
-            ) : (
-              <span
-                className={`text-xs font-mono ${
-                  status === 'Error' ? 'text-red-500 font-bold' : 'text-gray-400'
-                }`}
-              >
-                {status}
-              </span>
-            )}
-          </div>
-        </div>
-      </div>
-
-      <div className="flex-1">
-        <Editor
-          height="100%"
-          defaultLanguage="javascript"
-          value={code}
-          theme="vs-dark"
-          options={{
-            minimap: { enabled: false },
-            fontSize: 14,
-            automaticLayout: true,
-            scrollBeyondLastLine: false,
-          }}
-          onChange={(val) => onChangeCode(val ?? '')}
-          onMount={(editor) => {
-            editorRef.current = editor;
-          }}
-        />
-      </div>
-    </div>
-  );
-};
-
-type CanvasPaneProps = {
-  dims: string;
-  cursorPos: string;
-  onDownload: () => void;
-  canvasRef: React.RefObject<HTMLCanvasElement | null>;
-  viewportRef: React.RefObject<HTMLDivElement | null>;
-};
-
-const CanvasPane: FC<CanvasPaneProps> = ({
-  dims,
-  cursorPos,
-  onDownload,
-  canvasRef,
-  viewportRef,
-}) => {
-  return (
-    <div className="w-1/2 h-full relative bg-gray-950 flex flex-col overflow-hidden">
-      <div className="absolute top-4 right-4 z-10 flex gap-2">
-        <button
-          onClick={onDownload}
-          className="flex items-center gap-2 px-3 py-1.5 bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-md text-xs font-medium transition shadow-lg backdrop-blur-sm bg-opacity-80 text-white"
-          type="button"
-        >
-          <i className="ph ph-download-simple" />
-          Guardar PNG
-        </button>
-      </div>
-      <div
-        ref={viewportRef}
-        className="grow flex overflow-auto relative bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] bg-fixed"
-      >
-        <canvas ref={canvasRef} className="shadow-2xl transition-all duration-300" />
-      </div>
-      <div className="h-8 bg-gray-900 border-t border-gray-800 flex items-center px-4 justify-between text-xs text-gray-500 font-mono">
-        <span>{dims}</span>
-        <span>{cursorPos}</span>
-      </div>
-    </div>
-  );
-};
+import CanvasPane from './CanvasPane';
+import EditorPane, { type Status } from './EditorPane';
+import { INITIAL_CODE, STORAGE_KEY } from '../utils/initialCode';
+import { extractConfigFromCode, type CanvasConfig } from '../utils/canvasConfig';
 
 const CanvasStudio: FC = () => {
   const [code, setCode] = useState<string>(() => {
-    if (typeof window === 'undefined') return initialCode;
+    if (typeof window === 'undefined') return INITIAL_CODE;
     try {
       const saved = window.localStorage.getItem(STORAGE_KEY);
-      return saved ?? initialCode;
+      return saved ?? INITIAL_CODE;
     } catch {
-      return initialCode;
+      return INITIAL_CODE;
     }
   });
 
@@ -235,33 +68,8 @@ const CanvasStudio: FC = () => {
         console.error('No se pudo guardar en localStorage', e);
       }
 
-      // Extracción de config
-      let config: CanvasConfig = {
-        canvasWidth: 800,
-        canvasHeight: 600,
-        position: 'center',
-        backgroundColor: '#fff',
-      };
-
-      // Reemplazamos "export const config" para que el código sea válido dentro de new Function
-      const safeCode = code.replace(/export\s+const\s+config/g, 'const config');
-
-      try {
-        const configExtractor = new Function(
-          `
-${safeCode}
-if (typeof config !== 'undefined') return config;
-return null;
-`.trim(),
-        );
-        const extracted = configExtractor();
-        if (extracted && typeof extracted === 'object') {
-          config = { ...config, ...extracted };
-        }
-      } catch {
-        // ignorar errores de extracción de config
-      }
-
+      // Extraer config y código seguro
+      const { config, safeCode } = extractConfigFromCode(code);
       updateCanvasState(config);
 
       // Reset canvas
@@ -326,8 +134,11 @@ return null;
   }, []);
 
   const handleReset = () => {
-    if (typeof window !== 'undefined' && window.confirm('¿Estás seguro de resetear el código a la configuración inicial?')) {
-      setCode(initialCode);
+    if (
+      typeof window !== 'undefined' &&
+      window.confirm('¿Estás seguro de resetear el código a la configuración inicial?')
+    ) {
+      setCode(INITIAL_CODE);
       setStatus('Ready');
     }
   };
@@ -373,5 +184,3 @@ return null;
 };
 
 export default CanvasStudio;
-
-
