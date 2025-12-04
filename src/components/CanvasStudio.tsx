@@ -1,29 +1,35 @@
 import type { FC } from 'react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import CanvasPane from './CanvasPane';
-import EditorPane, { type Status } from './EditorPane';
+import EditorPane from './EditorPane';
 import { INITIAL_CODE, STORAGE_KEY } from '../utils/initialCode';
 import { extractConfigFromCode, type CanvasConfig } from '../utils/canvasConfig';
+import { useCanvasStore } from '../store/canvasStore';
 
 const CanvasStudio: FC = () => {
-  const [code, setCode] = useState<string>(() => {
-    if (typeof window === 'undefined') return INITIAL_CODE;
-    try {
-      const saved = window.localStorage.getItem(STORAGE_KEY);
-      return saved ?? INITIAL_CODE;
-    } catch {
-      return INITIAL_CODE;
-    }
-  });
-
-  const [status, setStatus] = useState<Status>('Ready');
-  const [dims, setDims] = useState<string>('initializing...');
-  const [cursorPos, setCursorPos] = useState<string>('x: 0, y: 0');
+  const { code, status, dims, cursorPos, setCode, setStatus, setDims, setCursorPos, setConfig } =
+    useCanvasStore();
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const editorRef = useRef<any | null>(null);
   const debounceRef = useRef<number | null>(null);
+
+  // Inicializar el código desde localStorage o fallback a INITIAL_CODE
+  useEffect(() => {
+    if (code) return;
+    if (typeof window === 'undefined') {
+      setCode(INITIAL_CODE);
+      return;
+    }
+
+    try {
+      const saved = window.localStorage.getItem(STORAGE_KEY);
+      setCode(saved ?? INITIAL_CODE);
+    } catch {
+      setCode(INITIAL_CODE);
+    }
+  }, [code, setCode]);
 
   const updateCanvasState = useCallback(
     (config: CanvasConfig) => {
@@ -32,13 +38,16 @@ const CanvasStudio: FC = () => {
       if (!canvas || !viewport) return;
 
       const width = config.canvasWidth ?? 800;
-      const height = config.canvasHeight ?? 600;
+      const height = config.canvasHeight ?? 800;
 
       if (canvas.width !== width || canvas.height !== height) {
         canvas.width = width;
         canvas.height = height;
         setDims(`${canvas.width} x ${canvas.height}`);
       }
+
+       // Guardamos la última config conocida en el store global
+      setConfig(config);
 
       // Ajustar posicionamiento dentro del viewport
       viewport.classList.remove('items-center', 'justify-center', 'p-10');

@@ -29,7 +29,7 @@ const CanvasPane: FC<CanvasPaneProps> = ({
       </div>
       <div
         ref={viewportRef}
-        className="grow flex overflow-auto relative bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] bg-fixed"
+        className="grow flex overflow-auto relative bg-[url('https://www.transparenttextures.com/patterns/asfalt-light.png')] bg-fixed"
       >
         <canvas ref={canvasRef} className="shadow-2xl transition-all duration-300" />
       </div>

@@ -20,6 +20,7 @@
     "monaco-editor": "^0.55.1",
     "react": "^19.2.1",
     "react-dom": "^19.2.1",
-    "tailwindcss": "^4.1.17"
+    "tailwindcss": "^4.1.17",
+    "zustand": "^4.5.5"
   }
 }

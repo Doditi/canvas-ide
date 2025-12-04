@@ -1,7 +1,6 @@
 import Editor from '@monaco-editor/react';
 import type { FC, MutableRefObject } from 'react';
-
-export type Status = 'Ready' | 'Saved' | 'Error' | 'Saving';
+import type { Status } from '../store/canvasStore';
 
 type EditorPaneProps = {
   code: string;
