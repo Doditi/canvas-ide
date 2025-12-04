@@ -1,16 +1,16 @@
 ---
-
+import CanvasStudio from '../components/CanvasStudio.tsx';
+import '../styles/global.css';
 ---
 
-<html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<meta name="viewport" content="width=device-width" />
-		<meta name="generator" content={Astro.generator} />
-		<title>Astro</title>
-	</head>
-	<body>
-		<h1>Astro</h1>
-	</body>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Canvas Studio | Realtime Editor</title>
+    <script src="https://unpkg.com/@phosphor-icons/web" defer></script>
+  </head>
+  <body class="flex h-screen w-screen">
+    <CanvasStudio client:only="react" />
+  </body>
 </html>

@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Canvas Studio | Realtime Editor</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        gray: { 850: '#1f2937', 900: '#111827', 950: '#0b0f19' },
+                        accent: '#818cf8'
+                    },
+                    fontFamily: { sans: ['Inter', 'sans-serif'] }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
+        
+        body { margin: 0; overflow: hidden; background-color: #0b0f19; color: #e5e7eb; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #1f2937; }
+        ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #6b7280; }
+        .canvas-shadow { box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.3); }
+        .loader { border: 2px solid #374151; border-top: 2px solid #818cf8; border-radius: 50%; width: 14px; height: 14px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="flex h-screen w-screen">
+
+    <div class="w-1/2 h-full flex flex-col border-r border-gray-800 bg-[#1e1e1e]">
+        <div class="h-12 flex items-center justify-between px-4 bg-[#1e1e1e] border-b border-gray-800 select-none">
+            <div class="flex items-center gap-2 text-sm font-medium text-gray-400">
+                <i class="ph ph-code text-accent text-lg"></i>
+                <span>script.js</span>
+            </div>
+            <div class="flex gap-2 items-center">
+                 <button onclick="resetCode()" class="p-1.5 hover:bg-gray-700 rounded text-gray-400 hover:text-red-400 transition" title="Restaurar código original">
+                    <i class="ph ph-trash"></i>
+                </button>
+                <button onclick="formatCode()" class="p-1.5 hover:bg-gray-700 rounded text-gray-400 hover:text-white transition" title="Formatear código">
+                    <i class="ph ph-magic-wand"></i>
+                </button>
+                <div id="status" class="text-xs text-gray-500 font-mono w-16 text-right transition-colors">Ready</div>
+            </div>
+        </div>
+        <div id="editor-container" class="grow"></div><!-- Acá va el editor -->
+    </div>
+
+    <div class="w-1/2 h-full relative bg-gray-950 flex flex-col overflow-hidden">
+        <div class="absolute top-4 right-4 z-10 flex gap-2">
+            <button onclick="downloadCanvas()" class="flex items-center gap-2 px-3 py-1.5 bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-md text-xs font-medium transition shadow-lg backdrop-blur-sm bg-opacity-80 text-white">
+                <i class="ph ph-download-simple"></i> Guardar PNG
+            </button>
+        </div>
+        <div id="canvas-viewport" class="grow flex overflow-auto relative bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] bg-fixed">
+            <canvas id="mainCanvas" class="canvas-shadow transition-all duration-300"></canvas>
+        </div>
+        <div class="h-8 bg-gray-900 border-t border-gray-800 flex items-center px-4 justify-between text-xs text-gray-500 font-mono">
+            <span id="canvas-dims">initializing...</span>
+            <span id="cursor-pos">x: 0, y: 0</span>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/loader.min.js"></script>
+
+    <script>
+        const STORAGE_KEY = 'canvas_editor_v1_content';
+
+        const initialCode = `
+export const config = {
+  canvasWidth: 600,
+  canvasHeight: 600,
+  position: 'center',
+  backgroundColor: '#ffffff'
+};
+
+// Fondo oscuro base
+ctx.fillStyle = '#111827';
+ctx.fillRect(0, 0, config.canvasWidth, config.canvasHeight);
+
+// Configuración de gradiente
+const gradient = ctx.createLinearGradient(0, 0, config.canvasWidth, config.canvasHeight);
+gradient.addColorStop(0, '#f43f5e'); // Rose
+gradient.addColorStop(1, '#6366f1'); // Indigo
+
+// Círculo central
+ctx.fillStyle = gradient;
+ctx.beginPath();
+ctx.arc(300, 300, 150, 0, Math.PI * 2);
+ctx.fill();
+
+// Efecto de brillo
+ctx.shadowColor = '#f43f5e';
+ctx.shadowBlur = 50;
+
+// Texto
+ctx.fillStyle = 'white';
+ctx.shadowBlur = 0; // Reset shadow para texto nítido
+ctx.font = 'bold 40px Inter, sans-serif';
+ctx.textAlign = 'center';
+ctx.fillText('Canvas Editor', 300, 280);
+
+ctx.font = 'normal 20px Inter, sans-serif';
+ctx.fillStyle = '#cbd5e1';
+ctx.fillText('Changes are saved automatically', 300, 320);
+`;
+
+        let editor;
+        const canvas = document.getElementById('mainCanvas');
+        const ctx = canvas.getContext('2d');
+        const viewport = document.getElementById('canvas-viewport');
+        const statusEl = document.getElementById('status');
+        const dimsEl = document.getElementById('canvas-dims');
+        
+        require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs' }});
+
+        require(['vs/editor/editor.main'], function() {
+            monaco.languages.typescript.javascriptDefaults.setDiagnosticsOptions({
+                noSemanticValidation: true,
+                noSyntaxValidation: false
+            });
+
+            // 1. RECUPERAR CÓDIGO GUARDADO O USAR DEFAULT
+            const savedCode = localStorage.getItem(STORAGE_KEY);
+            const startCode = savedCode ? savedCode : initialCode.trim();
+
+            editor = monaco.editor.create(document.getElementById('editor-container'), {
+                value: startCode,
+                language: 'javascript',
+                theme: 'vs-dark',
+                fontSize: 14,
+                fontFamily: 'JetBrains Mono, Menlo, monospace',
+                minimap: { enabled: false },
+                automaticLayout: true,
+                padding: { top: 20 },
+                scrollBeyondLastLine: false,
+                lineNumbersMinChars: 3
+            });
+
+            let debounceTimer;
+            editor.onDidChangeModelContent(() => {
+                statusEl.innerHTML = '<div class="loader ml-auto"></div>'; // Loader alineado a la derecha
+                clearTimeout(debounceTimer);
+                debounceTimer = setTimeout(runCode, 800);
+            });
+
+            runCode();
+        });
+
+        function runCode() {
+            const rawCode = editor.getValue();
+            
+            // 2. GUARDAR EN LOCALSTORAGE
+            try {
+                localStorage.setItem(STORAGE_KEY, rawCode);
+            } catch(e) { console.error("Quota exceeded or disabled LS"); }
+
+            try {
+                // Extracción de config (Mismo método seguro que antes)
+                let config = { canvasWidth: 800, canvasHeight: 600, position: 'center', backgroundColor: '#fff' };
+                const safeCode = rawCode.replace(/export\s+const\s+config/g, 'const config');
+                
+                try {
+                    const configExtractor = new Function(`
+                        ${safeCode}
+                        if(typeof config !== 'undefined') return config;
+                        return null;
+                    `);
+                    const extracted = configExtractor();
+                    if(extracted) config = { ...config, ...extracted };
+                } catch(e) {}
+
+                updateCanvasState(config);
+
+                // Reset canvas
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                // Guardar estado del contexto antes de pintar fondo (para no perder transformaciones si las hubiera, aunque aquí es reset total)
+                ctx.save();
+                if(config.backgroundColor) {
+                    ctx.fillStyle = config.backgroundColor;
+                    ctx.fillRect(0,0, canvas.width, canvas.height);
+                }
+                ctx.restore();
+
+                // Ejecutar script de usuario
+                const runUserScript = new Function('canvas', 'ctx', safeCode);
+                runUserScript(canvas, ctx);
+
+                // Feedback visual de guardado
+                statusEl.innerText = 'Saved';
+                statusEl.className = "text-xs text-gray-400 font-mono w-16 text-right";
+
+            } catch (err) {
+                console.error(err);
+                statusEl.innerText = 'Error';
+                statusEl.className = "text-xs text-red-500 font-bold font-mono w-16 text-right";
+            }
+        }
+
+        function updateCanvasState(config) {
+            if(canvas.width !== config.canvasWidth || canvas.height !== config.canvasHeight){
+                canvas.width = config.canvasWidth || 800;
+                canvas.height = config.canvasHeight || 600;
+                dimsEl.innerText = `${canvas.width} x ${canvas.height}`;
+            }
+
+            viewport.classList.remove('items-center', 'justify-center', 'p-10');
+            if (config.position === 'center') {
+                viewport.classList.add('items-center', 'justify-center');
+            } else {
+                viewport.classList.add('p-10');
+            }
+        }
+
+        function formatCode() {
+            editor.getAction('editor.action.formatDocument').run();
+        }
+
+        // Nueva función para borrar localStorage y resetear
+        function resetCode() {
+            if(confirm("¿Estás seguro de resetear el código a la configuración inicial?")) {
+                editor.setValue(initialCode.trim());
+                runCode();
+            }
+        }
+
+        function downloadCanvas() {
+            const link = document.createElement('a');
+            link.download = `canvas-${Date.now()}.png`;
+            link.href = canvas.toDataURL();
+            link.click();
+        }
+
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            // Calcular escala por si el canvas está visualmente escalado (CSS)
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            
+            const x = Math.round((e.clientX - rect.left) * scaleX);
+            const y = Math.round((e.clientY - rect.top) * scaleY);
+            document.getElementById('cursor-pos').innerText = `x: ${x}, y: ${y}`;
+        });
+
+        window.addEventListener('resize', () => {
+            editor.layout();
+        });
+    </script>
+</body>
+</html>
