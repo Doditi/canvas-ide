@@ -5,7 +5,16 @@ export const config = {
   canvasWidth: 600,
   canvasHeight: 600,
   position: 'center',
-  backgroundColor: '#0b0f19'
+  backgroundColor: '#0b0f19',
+  fonts: [
+    {
+      fontName: 'Inter',
+      weights: [400, 600],
+      subset: 'latin',
+      display: 'swap',
+      format: 'woff2'
+    }
+  ]
 };
 
 // Fondo oscuro base

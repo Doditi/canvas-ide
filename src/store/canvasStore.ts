@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import type { FontConfig } from '../utils/fontLoader';
 
 export type Status = 'Ready' | 'Saved' | 'Error' | 'Saving';
 
@@ -18,6 +19,7 @@ export type CanvasConfig = {
   canvasHeight?: number;
   position?: Position;
   backgroundColor?: string;
+  fonts?: FontConfig[];
 };
 
 export const DEFAULT_CONFIG: CanvasConfig = {

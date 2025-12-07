@@ -4,6 +4,7 @@ import CanvasPane from './CanvasPane';
 import EditorPane from './EditorPane';
 import { INITIAL_CODE, STORAGE_KEY } from '../utils/initialCode';
 import { useCanvasStore, type CanvasConfig } from '../store/canvasStore';
+import { loadFonts } from '../utils/fontLoader';
 
 const CanvasStudio: FC = () => {
   const { code, status, dims, cursorPos, safeCode, config, updateCodeAndConfig, setStatus, setDims, setCursorPos, setConfig } =
@@ -218,6 +219,17 @@ const CanvasStudio: FC = () => {
       resizeObserver.disconnect();
     };
   }, [updateCanvasState]);
+
+  // Cargar fuentes cuando cambie la configuración
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (config.fonts && config.fonts.length > 0) {
+      loadFonts(config.fonts).catch((error) => {
+        // Silenciosamente manejar errores - las fuentes usarán fallback
+        console.warn('Error al cargar fuentes:', error);
+      });
+    }
+  }, [config.fonts]);
 
   const handleReset = () => {
     if (
