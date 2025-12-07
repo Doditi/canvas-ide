@@ -3,11 +3,10 @@ import { useCallback, useEffect, useRef } from 'react';
 import CanvasPane from './CanvasPane';
 import EditorPane from './EditorPane';
 import { INITIAL_CODE, STORAGE_KEY } from '../utils/initialCode';
-import { extractConfigFromCode, type CanvasConfig } from '../utils/canvasConfig';
-import { useCanvasStore } from '../store/canvasStore';
+import { useCanvasStore, type CanvasConfig } from '../store/canvasStore';
 
 const CanvasStudio: FC = () => {
-  const { code, status, dims, cursorPos, setCode, setStatus, setDims, setCursorPos, setConfig } =
+  const { code, status, dims, cursorPos, safeCode, config, updateCodeAndConfig, setStatus, setDims, setCursorPos, setConfig } =
     useCanvasStore();
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -19,17 +18,17 @@ const CanvasStudio: FC = () => {
   useEffect(() => {
     if (code) return;
     if (typeof window === 'undefined') {
-      setCode(INITIAL_CODE);
+      updateCodeAndConfig(INITIAL_CODE);
       return;
     }
 
     try {
       const saved = window.localStorage.getItem(STORAGE_KEY);
-      setCode(saved ?? INITIAL_CODE);
+      updateCodeAndConfig(saved ?? INITIAL_CODE);
     } catch {
-      setCode(INITIAL_CODE);
+      updateCodeAndConfig(INITIAL_CODE);
     }
-  }, [code, setCode]);
+  }, [code, updateCodeAndConfig]);
 
   const updateCanvasState = useCallback(
     (config: CanvasConfig) => {
@@ -68,30 +67,35 @@ const CanvasStudio: FC = () => {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
+    // Obtener valores actuales del store (pueden haber cambiado desde que se creó el callback)
+    const currentState = useCanvasStore.getState();
+    const currentCode = currentState.code;
+    const currentConfig = currentState.config;
+    const currentSafeCode = currentState.safeCode;
+
     try {
       // Guardar en localStorage
       try {
-        window.localStorage.setItem(STORAGE_KEY, code);
+        window.localStorage.setItem(STORAGE_KEY, currentCode);
       } catch (e) {
         // eslint-disable-next-line no-console
         console.error('No se pudo guardar en localStorage', e);
       }
 
-      // Extraer config y código seguro
-      const { config, safeCode } = extractConfigFromCode(code);
-      updateCanvasState(config);
+      // Actualizar el estado del canvas con la config actual
+      updateCanvasState(currentConfig);
 
       // Reset canvas
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.save();
-      if (config.backgroundColor) {
+      if (currentConfig.backgroundColor) {
         ctx.fillStyle = 'white';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
       }
       ctx.restore();
 
       // Ejecutar script de usuario
-      const runUserScript = new Function('canvas', 'ctx', safeCode);
+      const runUserScript = new Function('canvas', 'ctx', currentSafeCode);
       runUserScript(canvas, ctx);
 
       setStatus('Saved');
@@ -100,7 +104,7 @@ const CanvasStudio: FC = () => {
       console.error(err);
       setStatus('Error');
     }
-  }, [code, updateCanvasState]);
+  }, [updateCanvasState, setStatus]);
 
   // Debounce de ejecución cuando cambia el código
   useEffect(() => {
@@ -147,7 +151,7 @@ const CanvasStudio: FC = () => {
       typeof window !== 'undefined' &&
       window.confirm('¿Estás seguro de resetear el código a la configuración inicial?')
     ) {
-      setCode(INITIAL_CODE);
+      updateCodeAndConfig(INITIAL_CODE);
       setStatus('Ready');
     }
   };
@@ -175,7 +179,7 @@ const CanvasStudio: FC = () => {
       <EditorPane
         code={code}
         status={status}
-        onChangeCode={setCode}
+        onChangeCode={updateCodeAndConfig}
         onReset={handleReset}
         onFormat={handleFormat}
         editorRef={editorRef}
