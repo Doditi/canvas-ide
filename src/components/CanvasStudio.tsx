@@ -45,18 +45,73 @@ const CanvasStudio: FC = () => {
         setDims(`${canvas.width} x ${canvas.height}`);
       }
 
-       // Guardamos la última config conocida en el store global
+      // Guardamos la última config conocida en el store global
       setConfig(config);
 
+      // Calcular auto-scaling para que el canvas siempre se vea completo
+      const viewportRect = viewport.getBoundingClientRect();
+      const viewportWidth = viewportRect.width;
+      const viewportHeight = viewportRect.height;
+      const padding = 20; // Padding mínimo alrededor del canvas
+      
+      const availableWidth = viewportWidth - padding * 2;
+      const availableHeight = viewportHeight - padding * 2;
+      
+      const scaleX = availableWidth / width;
+      const scaleY = availableHeight / height;
+      const scale = Math.min(scaleX, scaleY, 1); // No escalar más grande que el tamaño original
+      
+      // Aplicar escala al canvas
+      canvas.style.width = `${width * scale}px`;
+      canvas.style.height = `${height * scale}px`;
+      canvas.style.transform = 'none'; // Resetear transform si había alguno
+
       // Ajustar posicionamiento dentro del viewport
-      viewport.classList.remove('items-center', 'justify-center', 'p-10');
-      if (config.position === 'center') {
-        viewport.classList.add('items-center', 'justify-center');
-      } else {
-        viewport.classList.add('p-10');
+      // Remover todas las clases de posicionamiento posibles
+      viewport.classList.remove(
+        'items-start', 'items-center', 'items-end',
+        'justify-start', 'justify-center', 'justify-end',
+        'p-10'
+      );
+
+      const position = config.position ?? 'center';
+      
+      // Aplicar clases según la posición
+      switch (position) {
+        case 'top-left':
+          viewport.classList.add('items-start', 'justify-start');
+          break;
+        case 'top':
+          viewport.classList.add('items-start', 'justify-center');
+          break;
+        case 'top-right':
+          viewport.classList.add('items-start', 'justify-end');
+          break;
+        case 'right':
+          viewport.classList.add('items-center', 'justify-end');
+          break;
+        case 'bottom-right':
+          viewport.classList.add('items-end', 'justify-end');
+          break;
+        case 'bottom':
+          viewport.classList.add('items-end', 'justify-center');
+          break;
+        case 'bottom-left':
+          viewport.classList.add('items-end', 'justify-start');
+          break;
+        case 'left':
+          viewport.classList.add('items-center', 'justify-start');
+          break;
+        case 'center':
+        default:
+          viewport.classList.add('items-center', 'justify-center');
+          break;
       }
+      
+      // Agregar padding para todas las posiciones
+      viewport.style.padding = `${padding}px`;
     },
-    [],
+    [setDims, setConfig],
   );
 
   const runCode = useCallback(() => {
@@ -144,7 +199,25 @@ const CanvasStudio: FC = () => {
     return () => {
       canvas.removeEventListener('mousemove', handleMove);
     };
-  }, []);
+  }, [setCursorPos]);
+
+  // Recalcular scaling cuando cambia el tamaño del viewport
+  useEffect(() => {
+    const viewport = viewportRef.current;
+    const canvas = canvasRef.current;
+    if (!viewport || !canvas) return;
+
+    const resizeObserver = new ResizeObserver(() => {
+      const currentState = useCanvasStore.getState();
+      updateCanvasState(currentState.config);
+    });
+
+    resizeObserver.observe(viewport);
+
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, [updateCanvasState]);
 
   const handleReset = () => {
     if (

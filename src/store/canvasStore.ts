@@ -2,10 +2,21 @@ import { create } from 'zustand';
 
 export type Status = 'Ready' | 'Saved' | 'Error' | 'Saving';
 
+export type Position = 
+  | 'center'
+  | 'top-left'
+  | 'top'
+  | 'top-right'
+  | 'right'
+  | 'bottom-right'
+  | 'bottom'
+  | 'bottom-left'
+  | 'left';
+
 export type CanvasConfig = {
   canvasWidth?: number;
   canvasHeight?: number;
-  position?: 'center' | 'top-left' | string;
+  position?: Position;
   backgroundColor?: string;
 };
 
