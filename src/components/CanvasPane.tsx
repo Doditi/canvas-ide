@@ -1,4 +1,5 @@
 import type { FC, RefObject } from 'react';
+import { useCanvasStore } from '../store/canvasStore';
 
 type CanvasPaneProps = {
   dims: string;
@@ -15,12 +16,13 @@ const CanvasPane: FC<CanvasPaneProps> = ({
   canvasRef,
   viewportRef,
 }) => {
+  const { config } = useCanvasStore();
   return (
-    <div className="w-1/2 h-full relative bg-gray-950 flex flex-col overflow-hidden">
+    <div className="w-1/2 h-full relative flex flex-col overflow-hidden" style={{ backgroundColor: config.backgroundColor ?? '#fff' }}>
       <div className="absolute top-4 right-4 z-10 flex gap-2">
         <button
           onClick={onDownload}
-          className="flex items-center gap-2 px-3 py-1.5 bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-md text-xs font-medium transition shadow-lg backdrop-blur-sm bg-opacity-80 text-white"
+          className="flex items-center gap-2 px-3 py-1.5 bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-md text-xs font-medium transition shadow-lg backdrop-blur-sm bg-opacity-80 text-white cursor-pointer"
           type="button"
         >
           <i className="ph ph-download-simple" />
@@ -33,7 +35,7 @@ const CanvasPane: FC<CanvasPaneProps> = ({
       >
         <canvas ref={canvasRef} className="shadow-2xl transition-all duration-300" />
       </div>
-      <div className="h-8 bg-gray-900 border-t border-gray-800 flex items-center px-4 justify-between text-xs text-gray-500 font-mono">
+      <div className="h-8 border-t flex items-center px-4 justify-between text-xs text-gray-500 font-mono">
         <span>{dims}</span>
         <span>{cursorPos}</span>
       </div>

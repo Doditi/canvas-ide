@@ -85,7 +85,7 @@ const CanvasStudio: FC = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.save();
       if (config.backgroundColor) {
-        ctx.fillStyle = config.backgroundColor;
+        ctx.fillStyle = 'white';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
       }
       ctx.restore();

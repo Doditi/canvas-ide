@@ -5,7 +5,7 @@ export const config = {
   canvasWidth: 600,
   canvasHeight: 600,
   position: 'center',
-  backgroundColor: '#ffffff'
+  backgroundColor: '#0b0f19'
 };
 
 // Fondo oscuro base
