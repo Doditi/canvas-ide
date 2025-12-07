@@ -1,7 +1,34 @@
 {
-  "name": "canvas-studio",
+  "name": "canvas-ide",
   "type": "module",
-  "version": "0.0.1",
+  "version": "1.0.0",
+  "description": "Aplicación web para previsualizar en tiempo real cómo queda el resultado final de un canvas HTML5, con la posibilidad de agregar fuentes fácilmente, sin tener que crear todo un espacio de desarrollo",
+  "keywords": [
+    "canvas",
+    "html5",
+    "canvas-editor",
+    "canvas-ide",
+    "canvas-preview",
+    "monaco-editor",
+    "real-time-preview",
+    "font-loader",
+    "fontsource",
+    "canvas-prototyping",
+    "canvas-visualization",
+    "web-canvas",
+    "canvas-tool",
+    "canvas-development",
+    "react",
+    "astro",
+    "typescript"
+  ],
+  "author": "Alexis Klisch",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/doditi/canvas-ide"
+  },
+  "homepage": "https://github.com/doditi/canvas-ide",
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",
