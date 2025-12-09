@@ -127,3 +127,5 @@ export function clearLoadedFonts(): void {
   // Opcional: podrías implementar limpieza aquí si es necesario
   // Por ahora, dejamos las fuentes cargadas ya que no causan problemas
 }
+
+
